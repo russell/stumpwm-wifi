@@ -1,0 +1,10 @@
+* wifi
+
+  This is a fork of the default stumpwm wifi package.  It depends on
+  iw tool to actually query the state of the wireless device.
+
+** usage:
+
+   Then you can use "%I" to show your signal strength and SSID of the
+   station.  You can also use "%i" if you just want to show the just
+   the signal strength.
