@@ -3,7 +3,7 @@
   This is a fork of the default stumpwm wifi package.  It depends on
   iw tool to actually query the state of the wireless device.
 
-** usage:
+** usage
 
    First load the plugin in your configuration.
 
