@@ -24,4 +24,4 @@
   :license "GPL"
   :depends-on (#:stumpwm)
   :components ((:file "package")
-               (:file "stumpwm-wifi")))
+               (:file "wifi")))
