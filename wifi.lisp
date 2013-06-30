@@ -58,7 +58,7 @@ prev-val."
        (run-shell-command (format nil "~A dev 2>1" *iw-path*) t))
     (if match?
         (aref sub 0)
-        (error "No wireless device found."))))
+        (error "No Wifi."))))
 
 (defun read-wifi-info (device)
   (let ((info (run-shell-command (format nil "~A dev ~A link" *iw-path* device) t)))
