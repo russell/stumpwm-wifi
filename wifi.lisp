@@ -55,7 +55,7 @@ prev-val."
   (multiple-value-bind (match? sub)
       (cl-ppcre:scan-to-strings
        "Interface (.*)"
-       (run-shell-command (format nil "~A dev" *iw-path*) t))
+       (run-shell-command (format nil "~A dev 2>1" *iw-path*) t))
     (if match?
         (aref sub 0)
         (error "No wireless device found."))))
