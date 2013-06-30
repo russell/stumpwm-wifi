@@ -14,3 +14,5 @@
    Then you can use "%I" to show your signal strength and SSID of the
    station.  You can also use "%i" if you just want to show the just
    the signal strength.
+
+   [[file:screenshot.png]]
