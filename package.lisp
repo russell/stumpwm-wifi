@@ -19,6 +19,10 @@
 
 (defpackage :stumpwm.contrib.wifi
   (:use :common-lisp :stumpwm )
+  (:import-from #:anaphora
+                #:aif
+                #:acond
+                #:it)
   (:export #:*iw-path*
            #:*wireless-device*
            #:*wireless-cache-interval*))

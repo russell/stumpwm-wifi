@@ -22,6 +22,6 @@
   :description "Wifi formatter for the stumpwm mode-line."
   :author "Russell Sim <russell.sim@gmail.com>"
   :license "GPL"
-  :depends-on (#:stumpwm)
+  :depends-on (#:stumpwm #:anaphora)
   :components ((:file "package")
                (:file "wifi")))

@@ -23,9 +23,14 @@
 (defvar *iw-path* "/sbin/iw"
   "Location of iw, defaults to /sbin/iw.")
 
+(defvar *rfkill-path* "/usr/sbin/rfkill"
+  "Location of rfkill, defaults to /usr/sbin/rfkill.")
+
 (defvar *wireless-device* nil
   "Set to the name of the wireless device you want to monitor. If set
   to NIL, try to guess.")
+
+(defvar *physical-device* nil)
 
 (defvar *wireless-cache-interval* 5
   "The number of seconds that can pass before refreshing.")
@@ -52,13 +57,72 @@ prev-val."
            ,prev-val)))))
 
 (defun guess-wireless-device ()
-  (multiple-value-bind (match? sub)
-      (cl-ppcre:scan-to-strings
-       "Interface (.*)"
-       (run-shell-command (format nil "~A dev 2>&1" *iw-path*) t))
-    (if match?
-        (aref sub 0)
-        (error "No Wifi."))))
+  (let ((iw-output (run-shell-command (format nil "~A dev 2>&1" *iw-path*) t)))
+    (aif (car
+          (mapcar #'list
+                  (multiple-value-bind (match? sub)
+                      (cl-ppcre:scan-to-strings "Interface (.*)" iw-output)
+                    (loop :for i :below (array-dimension sub 0)
+                          :collect (aref sub i)))
+                  (multiple-value-bind (match? sub)
+                      (cl-ppcre:scan-to-strings "phy#(.*)" iw-output)
+                    (loop :for i :below (array-dimension sub 0)
+                          :collect (format nil "phy~A" (aref sub i))))))
+         (apply #'values it)
+         (error "No Wifi."))))
+
+(defun wifi-device ()
+  (or *wireless-device* (guess-wireless-device)))
+
+(defun phy-device ()
+  (or *physical-device*
+      (multiple-value-bind (wifi-dev phy-dev)
+          (guess-wireless-device)
+        (declare (ignore wifi-dev))
+        phy-dev)))
+
+(defun string-to-keyword (string)
+    (intern (string-upcase string)
+            (find-package 'keyword)))
+
+(defun read-rfhardware-info ()
+  (flet ((parse-field (line field-name)
+           (multiple-value-bind (match? sub)
+               (cl-ppcre:scan-to-strings (format nil "\\s+~A: (.*)" field-name) line)
+             (when match? (aref sub 0))))
+         (parse-boolean (value)
+           (when (equal value "yes") t)))
+    (let ((output (run-shell-command (format nil "~A list" *rfkill-path*) t))
+          hardware-info
+          current-hardware)
+      (with-input-from-string (stream output)
+        (do ((line (read-line stream nil)
+                   (read-line stream nil)))
+            ((null line))
+          (acond
+            ((multiple-value-bind (match? sub)
+                 (cl-ppcre:scan-to-strings "\\d+: (.*): .*" line)
+               (if match? (aref sub 0) nil))
+             (setf current-hardware (string-to-keyword it)))
+            ((parse-field line "Soft blocked")
+             (setf (getf (getf hardware-info current-hardware) :soft)
+                   (parse-boolean it)))
+            ((parse-field line "Hard blocked")
+             (setf (getf (getf hardware-info current-hardware) :hard)
+                   (parse-boolean it))))))
+      hardware-info)))
+
+(defun format-rfinfo (info device)
+  (case (rfinfo-off-p info device)
+    (:soft "Soft Off")
+    (:hard "Hard Off")))
+
+(defun rfinfo-off-p (info device)
+  (car
+   (loop :for (type disabled) :on (getf info (string-to-keyword device))
+           :by #'cddr
+         :when disabled
+           :collect type)))
 
 (defun read-wifi-info (device)
   (let ((info (run-shell-command (format nil "~A dev ~A link" *iw-path* device) t)))
@@ -94,10 +158,13 @@ you're connected to as well as the signal strength. When no valid data
 is found, just displays nil."
   (declare (ignore ml))
   (handler-case
-      (Let* ((device (or *wireless-device* (guess-wireless-device))))
-        (destructuring-bind (&key ssid freq signal tx-bitrate)
-            (read-wifi-info device)
-            (format nil "~A ^[~A~D dBm^]" ssid (color-signal-strength signal) signal)))
+      (destructuring-bind (&key ssid freq signal tx-bitrate)
+          (read-wifi-info (wifi-device))
+        (cond
+          (signal
+           (format nil "~A ^[~A~D dBm^]" ssid (color-signal-strength signal) signal))
+          ((rfinfo-off-p (read-rfhardware-info) (phy-device))
+           (format-rfinfo (read-rfhardware-info) (phy-device)))))
     ;; CLISP has annoying newlines in their error messages... Just
     ;; print a string showing our confusion.
     (t (c) (format nil "~A" c))))
@@ -107,10 +174,13 @@ is found, just displays nil."
 valid data is found, just displays nil."
   (declare (ignore ml))
   (handler-case
-      (let* ((device (or *wireless-device* (guess-wireless-device))))
-        (destructuring-bind (&key ssid freq signal tx-bitrate)
-            (read-wifi-info device)
-            (format nil "^[~A~D dBm^]" (color-signal-strength signal) signal)))
+      (destructuring-bind (&key ssid freq signal tx-bitrate)
+          (read-wifi-info (wifi-device))
+        (cond
+          (signal
+           (format nil "^[~A~D dBm^]" (color-signal-strength signal) signal))
+          ((rfinfo-off-p (read-rfhardware-info) (phy-device))
+           (format-rfinfo (read-rfhardware-info) (phy-device)))))
     ;; CLISP has annoying newlines in their error messages... Just
     ;; print a string showing our confusion.
     (t (c) (format nil "~A" c))))
