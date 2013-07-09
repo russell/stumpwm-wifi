@@ -21,7 +21,7 @@
 (in-package :stumpwm.contrib.wifi)
 
 (defvar *iw-path* "/sbin/iw"
-  "Location if iw, defaults to /sbin/iw.")
+  "Location of iw, defaults to /sbin/iw.")
 
 (defvar *wireless-device* nil
   "Set to the name of the wireless device you want to monitor. If set
