@@ -62,12 +62,14 @@ prev-val."
           (mapcar #'list
                   (multiple-value-bind (match? sub)
                       (cl-ppcre:scan-to-strings "Interface (.*)" iw-output)
-                    (loop :for i :below (array-dimension sub 0)
-                          :collect (aref sub i)))
+                    (when match?
+                      (loop :for i :below (array-dimension sub 0)
+                            :collect (aref sub i))))
                   (multiple-value-bind (match? sub)
                       (cl-ppcre:scan-to-strings "phy#(.*)" iw-output)
-                    (loop :for i :below (array-dimension sub 0)
-                          :collect (format nil "phy~A" (aref sub i))))))
+                    (when match?
+                      (loop :for i :below (array-dimension sub 0)
+                            :collect (format nil "phy~A" (aref sub i)))))))
          (apply #'values it)
          (error "No Wifi."))))
 
